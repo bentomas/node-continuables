@@ -1,3 +1,5 @@
+var sys = require('sys');
+
 exports.isContinuable = function(obj) {
   return !!(typeof obj === 'function' && obj.isContinuable && obj.fulfill);
 };
@@ -6,7 +8,8 @@ exports.isContinuable = function(obj) {
 
 exports.create = function() {
   var queue = [],
-      queueIndex = 0;
+      queueIndex = 0,
+      lastValError = false;
 
   var continuable = function continuable(func) {
     queue.push(func);
@@ -34,7 +37,7 @@ exports.create = function() {
           });
       }
       else {
-        continuable.fulfill(returned || val);
+        continuable.fulfill(typeof returned === 'undefined' || returned === null ? val : returned);
       }
     }
   };

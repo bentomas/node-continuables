@@ -1,4 +1,4 @@
-node-continuable
+node-continuables
 ================
 
 A module to aid in asynchronous code in Node.
@@ -8,7 +8,7 @@ Examples:
 
     // write an asynchronous function that outputs whatever it is given
     var async_function = function(val) {
-      var cont = continuable.create();  // This line creates the continuable for this function
+      var cont = continuables.create();  // This line creates a continuable for this function
 
       process.nextTick(function() {
           cont.fulfill(val);            // fulfill it
@@ -51,7 +51,7 @@ They can be chained:
 The module also comes with a group function, for doing many asynchronous calls at once:
   
     // it can take an object
-    continuable.group({
+    continuables.group({
         one: async_function(1),
         two: async_function(2),
         three: async_function(3)
@@ -61,7 +61,7 @@ The module also comes with a group function, for doing many asynchronous calls a
       });
 
     // or an array
-    continuable.group([
+    continuables.group([
         async_function(1),
         async_function(2),
         async_function(3)
@@ -73,4 +73,4 @@ The module also comes with a group function, for doing many asynchronous calls a
 Installing
 ----------
 
-To install, just download the code and stick the `continuable.js` file in your `~/.node_libraries` folder, and you're good to go.
+To install, just download the code and stick the `continuables.js` file in your `~/.node_libraries` folder, and you're good to go.

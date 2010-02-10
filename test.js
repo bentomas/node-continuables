@@ -1,8 +1,8 @@
-var continuable = require('./continuable');
+var continuables = require('./continuables');
 var TestSuite = require('async_testing').TestSuite;
 
 var async_function = function(val) {
-  var cont = continuable.create();
+  var cont = continuables.create();
 
   process.nextTick(function() {
       cont.fulfill(val);
@@ -48,7 +48,7 @@ var async_function = function(val) {
 (new TestSuite('Groups suite'))
   .runTests({
     "test object": function(test) {
-      continuable.group({
+      continuables.group({
           'one': async_function(1),
           'two': async_function(2),
           'three': async_function(3),
@@ -59,7 +59,7 @@ var async_function = function(val) {
          });
     },
     "test array": function(test) {
-      continuable.group([
+      continuables.group([
           async_function(1),
           async_function(2),
           async_function(3),
@@ -70,7 +70,7 @@ var async_function = function(val) {
          });
     },
     "test can take other objects": function(test) {
-      continuable.group([
+      continuables.group([
           async_function(1),
           function() { return 2; },
           3

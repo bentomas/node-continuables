@@ -1,8 +1,8 @@
-var continuable = require('./continuable'),
+var continuables = require('./continuables'),
     sys = require('sys');
 
 var async_function = function(val) {
-  var cont = continuable.create();
+  var cont = continuables.create();
 
   process.nextTick(function() {
       cont.fulfill(val);
