@@ -1,3 +1,4 @@
+var sys = require('sys');
 var continuables = require('./continuables');
 var TestSuite = require('async_testing').TestSuite;
 
@@ -22,26 +23,49 @@ var async_function = function(val) {
         });
     },
     "test chain": function(test) {
+      test.numAssertionsExpected = 2;
       async_function(true)
         (function(val) {
           test.assert.ok(val);
           return false;
-         });
+         })
         (function(val) {
           test.assert.ok(!val);
           test.finish();
          });
     },
     "test status parameter": function(test) {
-      async_function(true)
-        (function(val, succeeded) {
-          test.assert.ok(succeeded);
-          return new Error();
-         });
+      async_function(new Error())
         (function(val, succeeded) {
           test.assert.ok(!succeeded);
+          return true;
+         })
+        (function(val, succeeded) {
+          test.assert.ok(succeeded);
           test.finish();
-         });
+         })
+    },
+    "test error throws if not handled": function(test) {
+      var not_async = function(val) {
+        var cont = continuables.create();
+        if( typeof val !== 'undefined' ) {
+          cont.fulfill(val);
+        }
+        return cont;
+      };
+
+      test.assert.throws(function() {
+          not_async(new Error());
+        });
+
+      var continuable = not_async()
+        (function(val) {
+          return new Error();
+        });
+
+      test.assert.throws(function() {
+          continuable.fulfill();
+        });
     },
   });
 

@@ -40,6 +40,11 @@ exports.create = function() {
         continuable.fulfill(typeof returned === 'undefined' || returned === null ? val : returned);
       }
     }
+    else {
+      if( val instanceof Error ) {
+        throw val;
+      }
+    }
   };
 
   return continuable;
