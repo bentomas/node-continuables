@@ -6,7 +6,7 @@ A module to aid in asynchronous code in Node.
 Examples:
 --------
 
-    // write an asynchronous function that outputs whatever it is given
+    // an asynchronous function that outputs whatever it is given
     var async_function = function(val) {
       var cont = continuables.create();  // This line creates a continuable for this function
 
@@ -30,14 +30,14 @@ Examples:
         // succeeded == true
       });
 
-    // uh oh!
+    // uh oh! this will throw, the error hasn't been handled
     async_function(new Error())
       (function(val, succeeded) {
         // val == new Error
         // succeeded = false
       });
 
-They can be chained:
+continuables can be chained:
 
     async_function(true)
       (function(val) {
