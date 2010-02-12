@@ -4,7 +4,7 @@ node-continuables
 A module to aid in asynchronous code in Node.
 
 An implementation of an idea suggested by [Felix](http://github.com/felixge)
-[on the Node mailing list](http://groups.google.com/group/nodejs/msg/44fdc68c6e344505)
+on [the Node mailing list](http://groups.google.com/group/nodejs/msg/44fdc68c6e344505)
 
 This is really intended for people writing asynchronous libraries for Node.  It makes creating
 and managing continuables really easy.
