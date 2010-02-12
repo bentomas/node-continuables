@@ -3,18 +3,30 @@ node-continuables
 
 A module to aid in asynchronous code in Node.
 
+An implementation of an idea suggested by [Felix](http://github.com/felixge)
+[on the Node mailing list](http://groups.google.com/group/nodejs/msg/44fdc68c6e344505)
+
+This is really intended for people writing asynchronous libraries for Node.  It makes creating
+and managing continuables really easy.
+
 Examples:
 --------
 
-    // an asynchronous function that outputs whatever it is given
+    var continuables = require('continuables');
+
+    // let's say you have an asynchronous function that outputs whatever it is given.
+    // let's make it use the continuables module
     var async_function = function(val) {
-      var cont = continuables.create();  // This line creates a continuable for this function
+      // This line creates a continuable for this function
+      var continuable = continuables.create();
 
       process.nextTick(function() {
-          cont.fulfill(val);            // fulfill it
+          // fulfill it
+          continuable.fulfill(val);
         });
 
-      return cont;                      // return the continuable for people to use
+      // return the continuable for people to use
+      return continuable;
     };
 
     // simple
@@ -69,6 +81,8 @@ The module also comes with a group function, for doing many asynchronous calls a
       (function(result) {
         // result == [1,2,3]
       });
+
+This also works great with Node's Promise objects.
 
 Installing
 ----------
