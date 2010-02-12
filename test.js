@@ -13,6 +13,13 @@ var async_function = function(val) {
 
   return cont;
 };
+var sync_function = function(val) {
+  var cont = continuables.create();
+  if( typeof val !== 'undefined' ) {
+    cont.fulfill(val);
+  }
+  return cont;
+};
 
 
 (new TestSuite('Continuables suite'))
@@ -100,19 +107,12 @@ var async_function = function(val) {
     },
     "test error throws if not handled": function(test) {
       test.numAssertionsExpected = 2;
-      var not_async = function(val) {
-        var cont = continuables.create();
-        if( typeof val !== 'undefined' ) {
-          cont.fulfill(val);
-        }
-        return cont;
-      };
 
       test.assert.throws(function() {
-          not_async(new Error());
+          sync_function(new Error());
         });
 
-      var continuable = not_async()
+      var continuable = sync_function()
         (function() {
           return new Error();
         });
@@ -123,13 +123,9 @@ var async_function = function(val) {
     },
     "test success status can be overridden by the original fulfillers": function(test) {
       test.numAssertionsExpected = 4;
-      var not_async_errors = function(val) {
-        var cont = continuables.create();
-        return cont;
-      };
 
       test.assert.throws(function() {
-          var cont = not_async_errors(true)
+          var cont = async_function()
             (function(val, success) {
               test.assert.ok(val);
               test.assert.ok(!success);
@@ -139,7 +135,7 @@ var async_function = function(val) {
 
       // but returning something can override status
       test.assert.doesNotThrow(function() {
-        var cont = not_async_errors(true)
+        var cont = async_function()
           (function(val, success) {
             return 1;
           });
