@@ -1,6 +1,8 @@
-var sys = require('sys');
+var sys = require('sys'),
+    events = require('events'),
+    TestSuite = require('async_testing').TestSuite;
+
 var continuables = require('./continuables');
-var TestSuite = require('async_testing').TestSuite;
 
 var async_function = function(val) {
   var cont = continuables.create();
@@ -31,6 +33,55 @@ var async_function = function(val) {
          })
         (function(val) {
           test.assert.ok(!val);
+          test.finish();
+         });
+    },
+    "test callback can return continuables": function(test) {
+      test.numAssertionsExpected = 1;
+      async_function(true)
+        (function(val) {
+          return async_function(43)(function(val) {
+              return async_function(val-1);
+            });
+         })
+        (function(val) {
+          test.assert.equal(42, val);
+          test.finish();
+         });
+    },
+    "test callback can return Promises": function(test) {
+      test.numAssertionsExpected = 3;
+      async_function(true)
+        (function(val) {
+          var p = new events.Promise();
+          process.nextTick(function() {
+              p.emitSuccess(42);
+            });
+          return p;
+         })
+        (function(val) {
+          test.assert.equal(42, val);
+
+          var p = new events.Promise();
+          process.nextTick(function() {
+              p.emitError(new Error());
+            });
+          return p;
+         })
+        (function(val, success) {
+          test.assert.ok(!success);
+
+          var p1 = new events.Promise();
+          var p2 = new events.Promise();
+
+          process.nextTick(function() {
+              p1.emitSuccess(p2);
+              p2.emitSuccess(42);
+            });
+          return p1;
+         })
+        (function(val) {
+          test.assert.equal(42, val);
           test.finish();
          });
     },
@@ -94,14 +145,38 @@ var async_function = function(val) {
          });
     },
     "test can take other objects": function(test) {
+      var two = function() { return 2; };
+      var three = new events.Promise();
       continuables.group([
-          async_function(1),
-          function() { return 2; },
-          3
+          1,
+          two,
+          three
         ])
         (function(result) {
-          test.assert.deepEqual([1,2,3], result);
+          test.assert.deepEqual([1,two,3], result);
           test.finish();
          });
+
+      three.emitSuccess(3);
+    },
+    "test group waits for all promise/continuable chains to finish": function(test) {
+      var p1 = new events.Promise();
+      var p2 = new events.Promise();
+      var p3 = new events.Promise();
+      var p4 = new events.Promise();
+      continuables.group([
+          p1,
+          async_function(false)(function(val) { return p2; }),
+          p3
+        ])
+        (function(result) {
+          test.assert.deepEqual([true, true, true], result);
+          test.finish();
+         });
+
+      p1.emitSuccess(new async_function(true));
+      p2.emitSuccess(new async_function(true));
+      p3.emitSuccess(p4);
+      p4.emitSuccess(true);
     },
   });

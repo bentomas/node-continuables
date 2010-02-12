@@ -1,4 +1,5 @@
-var sys = require('sys');
+var sys = require('sys'),
+    events = require('events');
 
 exports.isContinuable = function(obj) {
   return !!(typeof obj === 'function' && obj.isContinuable && obj.fulfill);
@@ -20,29 +21,31 @@ exports.create = function() {
   continuable.isContinuable = true;
 
   continuable.fulfill = function fulfill(val) {
-    if( queueIndex < queue.length ) {
-      // check the return type from the val
-      if( val instanceof Error ) {
-        var error = true;
-      } 
-      else {
-        var error = false;
-      }
-
-      var returned = queue[queueIndex++](val, !error);
-      if( exports.isContinuable(returned) ) {
-        // need to queue up our function in the continuable
-        returned(function(val, succeeded) {
-            continuable.fulfill(val);
-          });
-      }
-      else {
-        continuable.fulfill(typeof returned === 'undefined' || returned === null ? val : returned);
-      }
+    if( exports.isContinuable(val) ) {
+      // need to queue up our function in the continuable
+      val(continuable.fulfill);
+    }
+    else if( val instanceof events.Promise ) {
+      val.addCallback(continuable.fulfill);
+      val.addErrback(continuable.fulfill);
     }
     else {
-      if( val instanceof Error ) {
-        throw val;
+      if( queueIndex < queue.length ) {
+        // check the return type from the val
+        if( val instanceof Error ) {
+          var error = true;
+        } 
+        else {
+          var error = false;
+        }
+
+        var returned = queue[queueIndex++](val, !error);
+        continuable.fulfill(typeof returned === 'undefined' || returned === null ? val : returned);
+      }
+      else {
+        if( val instanceof Error ) {
+          throw val;
+        }
       }
     }
   };
@@ -58,25 +61,22 @@ var groupCheckDone = function(state) {
 var groupAdd = function(state, piece, key) {
   state.numPieces++;
 
-  if( exports.isContinuable(piece) ) {
-    piece(function(r) {
-        state.results[key] = r;
-        state.numDone++;
-        groupCheckDone(state);
-      });
-  }
-  else if( typeof piece === 'function' ) { // it's a function
-    process.nextTick(function() {
-        state.results[key] = piece();
-        state.numDone++;
-        groupCheckDone(state);
-      });
-  }
-  else { // it's just a regular old object
-    state.results[key] = piece;
-    state.numDone++;
-    groupCheckDone(state);
-  }
+  var handlePieceResult = function(result) {
+    if( exports.isContinuable(result) ) {
+      result(handlePieceResult);
+    }
+    else if( result instanceof events.Promise ) {
+      result.addCallback(handlePieceResult);
+      result.addErrback(handlePieceResult);
+    }
+    else {
+      state.results[key] = result;
+      state.numDone++;
+      groupCheckDone(state);
+    }
+  };
+
+  handlePieceResult(piece);
 };
 
 exports.group = function(obj) {
