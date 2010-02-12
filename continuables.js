@@ -20,32 +20,36 @@ exports.create = function() {
 
   continuable.isContinuable = true;
 
-  continuable.fulfill = function fulfill(val) {
+  continuable.fulfill = function fulfill(val, success) {
     if( exports.isContinuable(val) ) {
       // need to queue up our function in the continuable
       val(continuable.fulfill);
     }
     else if( val instanceof events.Promise ) {
       val.addCallback(continuable.fulfill);
-      val.addErrback(continuable.fulfill);
+      val.addErrback(function(val) { continuable.fulfill(val, false); });
     }
     else {
-      if( queueIndex < queue.length ) {
-        // check the return type from the val
+      if( typeof success === 'undefined' ) {
         if( val instanceof Error ) {
-          var error = true;
+          success = false;
         } 
         else {
-          var error = false;
+          success = true;
         }
-
-        var returned = queue[queueIndex++](val, !error);
-        continuable.fulfill(typeof returned === 'undefined' || returned === null ? val : returned);
       }
-      else {
-        if( val instanceof Error ) {
-          throw val;
+
+      if( queueIndex < queue.length ) {
+        var returned = queue[queueIndex++](val, success);
+        if( typeof returned === 'undefined' || returned === null ) {
+          continuable.fulfill(val, success);
         }
+        else {
+          continuable.fulfill(returned);
+        }
+      }
+      else if(!success) {
+        throw val;
       }
     }
   };
@@ -67,7 +71,7 @@ var groupAdd = function(state, piece, key) {
     }
     else if( result instanceof events.Promise ) {
       result.addCallback(handlePieceResult);
-      result.addErrback(handlePieceResult);
+      result.addErrback(function(val) { handlePieceResult(val, false); });
     }
     else {
       state.results[key] = result;

@@ -18,6 +18,7 @@ var async_function = function(val) {
 (new TestSuite('Continuables suite'))
   .runTests({
     "test simple": function(test) {
+      test.numAssertionsExpected = 1;
       async_function(true)
         (function(val) {
           test.assert.ok(val);
@@ -86,6 +87,7 @@ var async_function = function(val) {
          });
     },
     "test status parameter": function(test) {
+      test.numAssertionsExpected = 2;
       async_function(new Error())
         (function(val, succeeded) {
           test.assert.ok(!succeeded);
@@ -97,6 +99,7 @@ var async_function = function(val) {
          })
     },
     "test error throws if not handled": function(test) {
+      test.numAssertionsExpected = 2;
       var not_async = function(val) {
         var cont = continuables.create();
         if( typeof val !== 'undefined' ) {
@@ -110,7 +113,7 @@ var async_function = function(val) {
         });
 
       var continuable = not_async()
-        (function(val) {
+        (function() {
           return new Error();
         });
 
@@ -118,11 +121,37 @@ var async_function = function(val) {
           continuable.fulfill();
         });
     },
+    "test success status can be overridden by the original fulfillers": function(test) {
+      test.numAssertionsExpected = 4;
+      var not_async_errors = function(val) {
+        var cont = continuables.create();
+        return cont;
+      };
+
+      test.assert.throws(function() {
+          var cont = not_async_errors(true)
+            (function(val, success) {
+              test.assert.ok(val);
+              test.assert.ok(!success);
+            });
+          cont.fulfill(true, false);
+        });
+
+      // but returning something can override status
+      test.assert.doesNotThrow(function() {
+        var cont = not_async_errors(true)
+          (function(val, success) {
+            return 1;
+          });
+        cont.fulfill(true, false);
+      });
+    },
   });
 
 (new TestSuite('Groups suite'))
   .runTests({
     "test object": function(test) {
+      test.numAssertionsExpected = 1;
       continuables.group({
           'one': async_function(1),
           'two': async_function(2),
@@ -134,6 +163,7 @@ var async_function = function(val) {
          });
     },
     "test array": function(test) {
+      test.numAssertionsExpected = 1;
       continuables.group([
           async_function(1),
           async_function(2),
@@ -145,6 +175,7 @@ var async_function = function(val) {
          });
     },
     "test can take other objects": function(test) {
+      test.numAssertionsExpected = 1;
       var two = function() { return 2; };
       var three = new events.Promise();
       continuables.group([
@@ -160,6 +191,7 @@ var async_function = function(val) {
       three.emitSuccess(3);
     },
     "test group waits for all promise/continuable chains to finish": function(test) {
+      test.numAssertionsExpected = 1;
       var p1 = new events.Promise();
       var p2 = new events.Promise();
       var p3 = new events.Promise();
