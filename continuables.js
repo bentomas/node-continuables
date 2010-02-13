@@ -1,33 +1,22 @@
-var sys = require('sys'),
-    events = require('events');
+var events = require('events');
 
 exports.isContinuable = function(obj) {
   return !!(typeof obj === 'function' && obj.isContinuable && obj.fulfill);
 };
 
-// TODO Allow Node events.Promise objects as well as continuables for async code
-
 exports.create = function() {
   var queue = [],
       queueIndex = 0,
-      lastValError = false;
+      fulfilled = false;
 
-  var continuable = function continuable(func) {
-    queue.push(func);
-
-    return continuable;
-  };
-
-  continuable.isContinuable = true;
-
-  continuable.fulfill = function fulfill(val, success) {
+  var handleVal = function handleVal(val, success) {
     if( exports.isContinuable(val) ) {
       // need to queue up our function in the continuable
-      val(continuable.fulfill);
+      val(handleVal);
     }
     else if( val instanceof events.Promise ) {
-      val.addCallback(continuable.fulfill);
-      val.addErrback(function(val) { continuable.fulfill(val, false); });
+      val.addCallback(handleVal);
+      val.addErrback(function(val) { handleVal(val, false); });
     }
     else {
       if( typeof success === 'undefined' ) {
@@ -42,10 +31,10 @@ exports.create = function() {
       if( queueIndex < queue.length ) {
         var returned = queue[queueIndex++](val, success);
         if( typeof returned === 'undefined' || returned === null ) {
-          continuable.fulfill(val, success);
+          handleVal(val, success);
         }
         else {
-          continuable.fulfill(returned);
+          handleVal(returned);
         }
       }
       else if(!success) {
@@ -54,11 +43,26 @@ exports.create = function() {
     }
   };
 
+  var continuable = function continuable(func) {
+    queue.push(func);
+    return continuable;
+  };
+  continuable.isContinuable = true;
+  continuable.fulfill = function(val, success) {
+    if( !fulfilled ) {
+      fulfilled = true;
+      handleVal(val, success);
+    }
+    else {
+      throw new Error('this continuable has already been fulfilled');
+    }
+  };
+
   return continuable;
 };
 
 var groupCheckDone = function(state) {
-  if( state.numPieces === state.numDone ) {
+  if( state.doneAdding && state.numPieces === state.numDone ) {
     state.continuable.fulfill(state.results);
   };
 };
@@ -71,7 +75,7 @@ var groupAdd = function(state, piece, key) {
     }
     else if( result instanceof events.Promise ) {
       result.addCallback(handlePieceResult);
-      result.addErrback(function(val) { handlePieceResult(val, false); });
+      result.addErrback(handlePieceResult);
     }
     else {
       state.results[key] = result;
@@ -87,7 +91,8 @@ exports.group = function(obj) {
   var state = {
     numPieces: 0,
     numDone: 0,
-    continuable: exports.create()
+    continuable: exports.create(),
+    doneAdding: false
   };
 
   if( obj instanceof Array ) {
@@ -103,6 +108,8 @@ exports.group = function(obj) {
       groupAdd(state, obj[key], key);
     }
   }
+
+  state.doneAdding = true;
 
   return state.continuable;
 };

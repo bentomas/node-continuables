@@ -125,7 +125,7 @@ var sync_function = function(val) {
       test.numAssertionsExpected = 4;
 
       test.assert.throws(function() {
-          var cont = async_function()
+          var cont = sync_function()
             (function(val, success) {
               test.assert.ok(val);
               test.assert.ok(!success);
@@ -135,12 +135,18 @@ var sync_function = function(val) {
 
       // but returning something can override status
       test.assert.doesNotThrow(function() {
-        var cont = async_function()
+        var cont = sync_function()
           (function(val, success) {
             return 1;
           });
         cont.fulfill(true, false);
       });
+    },
+    "test can't fulfill twice": function(test) {
+      test.numAssertionsExpected = 1;
+      test.assert.throws(function() {
+          sync_function(true).fulfill(false);
+        });
     },
   });
 
