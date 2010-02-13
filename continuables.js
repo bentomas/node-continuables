@@ -111,5 +111,15 @@ exports.group = function(obj) {
 
   state.doneAdding = true;
 
+  if( state.numPieces === state.numDone ) {
+    // we have to do this in the nextTick so we can give people a chance to add
+    // some callbacks
+    // this case only happens if everything added to the group is actually
+    // synchronous, so they have all already finished
+    process.nextTick(function() {
+        groupCheckDone(state);
+      });
+  }
+
   return state.continuable;
 };

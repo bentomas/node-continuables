@@ -213,4 +213,12 @@ var sync_function = function(val) {
       p3.emitSuccess(p4);
       p4.emitSuccess(true);
     },
+    "test fires if all synchronous": function(test) {
+      test.numAssertionsExpected = 1;
+      continuables.group([ 1, 2, 3 ])
+        (function(result) {
+          test.assert.deepEqual([1,2,3], result);
+          test.finish();
+         });
+    },
   });
