@@ -9,35 +9,31 @@ exports.create = function() {
       queueIndex = 0,
       fulfilled = false;
 
-  var handleVal = function handleVal(val, success) {
+  var handleVal = function handleVal(val, error) {
     if( exports.isContinuable(val) ) {
       // need to queue up our function in the continuable
       val(handleVal);
     }
     else if( val instanceof events.Promise ) {
       val.addCallback(handleVal);
-      val.addErrback(function(val) { handleVal(val, false); });
+      val.addErrback(function(error) { handleVal(undefined, error); });
     }
     else {
-      if( typeof success === 'undefined' ) {
-        if( val instanceof Error ) {
-          success = false;
-        } 
-        else {
-          success = true;
-        }
+      if( (typeof error === 'undefined' || error === null) && val instanceof Error ) {
+          error = val;
+          val = undefined;
       }
 
       if( queueIndex < queue.length ) {
-        var returned = queue[queueIndex++](val, success);
+        var returned = queue[queueIndex++](val, error);
         if( typeof returned === 'undefined' || returned === null ) {
-          handleVal(val, success);
+          handleVal(val, error);
         }
         else {
           handleVal(returned);
         }
       }
-      else if(!success) {
+      else if(error) {
         throw val;
       }
     }
@@ -48,10 +44,10 @@ exports.create = function() {
     return continuable;
   };
   continuable.isContinuable = true;
-  continuable.fulfill = function(val, success) {
+  continuable.fulfill = function(val, error) {
     if( !fulfilled ) {
       fulfilled = true;
-      handleVal(val, success);
+      handleVal(val, error);
     }
     else {
       throw new Error('this continuable has already been fulfilled');

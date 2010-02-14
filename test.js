@@ -58,7 +58,7 @@ var sync_function = function(val) {
          });
     },
     "test callback can return Promises": function(test) {
-      test.numAssertionsExpected = 3;
+      test.numAssertionsExpected = 4;
       async_function(true)
         (function(val) {
           var p = new events.Promise();
@@ -76,8 +76,9 @@ var sync_function = function(val) {
             });
           return p;
          })
-        (function(val, success) {
-          test.assert.ok(!success);
+        (function(val, error) {
+          test.assert.ok(typeof val === 'undefined');
+          test.assert.ok(error instanceof Error);
 
           var p1 = new events.Promise();
           var p2 = new events.Promise();
@@ -93,15 +94,18 @@ var sync_function = function(val) {
           test.finish();
          });
     },
-    "test status parameter": function(test) {
-      test.numAssertionsExpected = 2;
-      async_function(new Error())
-        (function(val, succeeded) {
-          test.assert.ok(!succeeded);
+    "test error parameter": function(test) {
+      test.numAssertionsExpected = 4;
+      var err = new Error();
+      async_function(err)
+        (function(val, error) {
+          test.assert.ok(typeof val === 'undefined');
+          test.assert.equal(error, err);
           return true;
          })
-        (function(val, succeeded) {
-          test.assert.ok(succeeded);
+        (function(val, error) {
+          test.assert.ok(val);
+          test.assert.ok(typeof error === 'undefined');
           test.finish();
          })
     },
@@ -121,13 +125,12 @@ var sync_function = function(val) {
           continuable.fulfill();
         });
     },
-    "test throws if success false is not handled (but val isn't instanceof error)": function(test) {
+    "test throws if error is not handled (and isn't instanceof Error)": function(test) {
       test.numAssertionsExpected = 2;
 
       test.assert.throws(function() {
-          sync_function().fulfill('error', false);
+          sync_function().fulfill(null, 'error');
         });
-
 
       // gets chained along
       test.assert.throws(function() {
@@ -135,29 +138,8 @@ var sync_function = function(val) {
           (function() {
             // do nothing with the error
           });
-          continuable.fulfill('error', false);
+          continuable.fulfill(null, 'error');
         });
-    },
-    "test success status can be overridden by the original fulfillers": function(test) {
-      test.numAssertionsExpected = 4;
-
-      test.assert.throws(function() {
-          var cont = sync_function()
-            (function(val, success) {
-              test.assert.ok(val);
-              test.assert.ok(!success);
-            });
-          cont.fulfill(true, false);
-        });
-
-      // but returning something can override status
-      test.assert.doesNotThrow(function() {
-        var cont = sync_function()
-          (function(val, success) {
-            return 1;
-          });
-        cont.fulfill(true, false);
-      });
     },
     "test can't fulfill twice": function(test) {
       test.numAssertionsExpected = 1;

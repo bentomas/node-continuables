@@ -35,18 +35,29 @@ Examples:
         // val == true
       });
 
-    // the second parameter indicates if there was an error or not
+    // if there was an error, the second parameter will have it
     async_function({hello: 'world'})
-      (function(val, succeeded) {
+      (function(val, error) {
         // val == {hello: 'world'}
         // succeeded == true
       });
 
-    // uh oh! this will throw, the error hasn't been handled
     async_function(new Error())
       (function(val, succeeded) {
-        // val == new Error
-        // succeeded = false
+        // val == undefined
+        // succeeded = new Error();
+      });
+
+    // this last example will throw because the code didn't 'handle' the error
+    // here is an example that doesn't
+
+    async_function(new Error())
+      (function(val, succeeded) {
+        // val == undefined
+        // succeeded = new Error();
+
+        // return something that isn't an error, indicating it has been handled
+        return true;
       });
 
 continuables can be chained:
