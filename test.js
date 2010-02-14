@@ -121,6 +121,23 @@ var sync_function = function(val) {
           continuable.fulfill();
         });
     },
+    "test throws if success false is not handled (but val isn't instanceof error)": function(test) {
+      test.numAssertionsExpected = 2;
+
+      test.assert.throws(function() {
+          sync_function().fulfill('error', false);
+        });
+
+
+      // gets chained along
+      test.assert.throws(function() {
+        var continuable = sync_function()
+          (function() {
+            // do nothing with the error
+          });
+          continuable.fulfill('error', false);
+        });
+    },
     "test success status can be overridden by the original fulfillers": function(test) {
       test.numAssertionsExpected = 4;
 
