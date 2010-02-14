@@ -220,4 +220,18 @@ var sync_function = function(val) {
           test.finish();
          });
     },
+    "test group with errors": function(test) {
+      test.numAssertionsExpected = 4;
+      var error1 = new Error();
+      var error2 = new Error();
+      continuables.group([ 1, error1, 3, error2 ])
+        (function(result, errors) {
+          test.assert.equal(1, result[0]);
+          test.assert.equal(error1, result[1]);
+          test.assert.equal(3, result[2]);
+          test.assert.equal(error2, result[3]);
+          test.finish();
+          return;
+         });
+    },
   });

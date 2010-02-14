@@ -59,23 +59,36 @@ exports.create = function() {
 
 var groupCheckDone = function(state) {
   if( state.doneAdding && state.numPieces === state.numDone ) {
-    state.continuable.fulfill(state.results);
+    state.continuable.fulfill(state.results, state.errors);
   };
 };
 var groupAdd = function(state, piece, key) {
   state.numPieces++;
 
-  var handlePieceResult = function(result) {
+  var handlePieceResult = function(result, error) {
     if( exports.isContinuable(result) ) {
       result(handlePieceResult);
     }
     else if( result instanceof events.Promise ) {
       result.addCallback(handlePieceResult);
-      result.addErrback(handlePieceResult);
+      result.addErrback(function(error) { handlePieceResult(undefined, error); });
     }
     else {
-      state.results[key] = result;
-      state.numDone++;
+      if( error ) {
+        if( !state.errors ) {
+          if( state.results instanceof Array ) {
+            state.errors = new Array(state.results.length);
+          }
+          else {
+            state.errors = {};
+          }
+        }
+        state.errors[key] = error;
+      }
+      else {
+        state.results[key] = result;
+        state.numDone++;
+      }
       groupCheckDone(state);
     }
   };
@@ -92,9 +105,8 @@ exports.group = function(obj) {
   };
 
   if( obj instanceof Array ) {
-    state.results = [];
+    state.results = new Array(obj.length);
     for(var i = 0; i < obj.length; i++) {
-      state.results.push(null);
       groupAdd(state, obj[i], i);
     }
   }
