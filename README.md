@@ -35,26 +35,26 @@ Examples:
         // val == true
       });
 
-    // if there was an error, the second parameter will have it
+    // if there was an error, the second parameter will tell you
     async_function({hello: 'world'})
-      (function(val, error) {
+      (function(val, successful) {
         // val == {hello: 'world'}
-        // succeeded == true
+        // successful == true
       });
 
     async_function(new Error())
-      (function(val, succeeded) {
-        // val == undefined
-        // succeeded = new Error();
+      (function(val, successful) {
+        // val == new Error()
+        // successful == false
       });
 
     // this last example will throw because the code didn't 'handle' the error
     // here is an example that doesn't
 
     async_function(new Error())
-      (function(val, succeeded) {
-        // val == undefined
-        // succeeded = new Error();
+      (function(val, successful) {
+        // val == new Error()
+        // successful == false
 
         // return something that isn't an error, indicating it has been handled
         return true;

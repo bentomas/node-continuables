@@ -26,9 +26,9 @@ var sync_function = function(val) {
   .runTests({
     "test simple": function(test) {
       test.numAssertionsExpected = 1;
-      async_function(true)
+      async_function(42)
         (function(val) {
-          test.assert.ok(val);
+          test.assert.equal(42, val);
           test.finish();
         });
     },
@@ -37,10 +37,10 @@ var sync_function = function(val) {
       async_function(true)
         (function(val) {
           test.assert.ok(val);
-          return false;
+          return 42;
          })
         (function(val) {
-          test.assert.ok(!val);
+          test.assert.equal(42, val);
           test.finish();
          });
     },
@@ -76,9 +76,9 @@ var sync_function = function(val) {
             });
           return p;
          })
-        (function(val, error) {
-          test.assert.ok(typeof val === 'undefined');
-          test.assert.ok(error instanceof Error);
+        (function(val, success) {
+          test.assert.ok(val instanceof Error);
+          test.assert.ok(!success);
 
           var p1 = new events.Promise();
           var p2 = new events.Promise();
@@ -94,22 +94,21 @@ var sync_function = function(val) {
           test.finish();
          });
     },
-    "test error parameter": function(test) {
-      test.numAssertionsExpected = 4;
+    "test successful parameter": function(test) {
+      test.numAssertionsExpected = 3;
       var err = new Error();
       async_function(err)
-        (function(val, error) {
-          test.assert.ok(typeof val === 'undefined');
-          test.assert.equal(error, err);
+        (function(val, successful) {
+          test.assert.equal(val, err);
+          test.assert.ok(!successful);
           return true;
          })
-        (function(val, error) {
-          test.assert.ok(val);
-          test.assert.ok(typeof error === 'undefined');
+        (function(val, successful) {
+          test.assert.ok(successful);
           test.finish();
          })
     },
-    "test error throws if not handled": function(test) {
+    "test error is thrown if not handled": function(test) {
       test.numAssertionsExpected = 2;
 
       test.assert.throws(function() {
@@ -129,7 +128,7 @@ var sync_function = function(val) {
       test.numAssertionsExpected = 2;
 
       test.assert.throws(function() {
-          sync_function().fulfill(null, 'error');
+          sync_function().fulfill('error', false);
         });
 
       // gets chained along
@@ -138,7 +137,7 @@ var sync_function = function(val) {
           (function() {
             // do nothing with the error
           });
-          continuable.fulfill(null, 'error');
+          continuable.fulfill('error', false);
         });
     },
     "test can't fulfill twice": function(test) {
@@ -146,6 +145,73 @@ var sync_function = function(val) {
       test.assert.throws(function() {
           sync_function(true).fulfill(false);
         });
+    },
+    "test different success errback callback": function(test) {
+      test.numAssertionsExpected = 2;
+      async_function(0)
+        (function success(val) {
+          test.assert.equal(0, val);
+         },
+         function error(val) {
+          // should not be called
+          test.assert.ok(false);
+         })
+
+      var err = new Error();
+      async_function(err)
+        (function success(val) {
+          // should not be called
+          test.assert.ok(false);
+         },
+         function error(val) {
+          test.assert.equal(err, val);
+          // return something so the error isn't thrown
+          return true;
+         })
+    },
+    "test different success errback callbacks with chain": function(test) {
+      test.numAssertionsExpected = 5;
+      async_function(0)
+        (function success(val) {
+          test.assert.equal(0, val);
+          return 1;
+         },
+         function error(val) {
+          // should not be called
+          test.assert.ok(false);
+         })
+        (function success(val) {
+          test.assert.equal(1, val);
+         },
+         function error(val) {
+          // should not be called
+          test.assert.ok(false);
+         })
+
+      var err = new Error();
+      async_function(err)
+        (function success(val) {
+          // should not be called
+          test.assert.ok(false);
+         },
+         function error(val) {
+          test.assert.equal(err, val);
+         })
+        (function success(val) {
+          // should not be called
+          test.assert.ok(false);
+         },
+         function error(val) {
+          test.assert.equal(err, val);
+          return 1;
+         })
+        (function success(val) {
+          test.assert.equal(1, val);
+         },
+         function error(val) {
+          // should not be called
+          test.assert.ok(false);
+         });
     },
   });
 
@@ -221,17 +287,21 @@ var sync_function = function(val) {
          });
     },
     "test group with errors": function(test) {
-      test.numAssertionsExpected = 4;
+      test.numAssertionsExpected = 5;
       var error1 = new Error();
       var error2 = new Error();
-      continuables.group([ 1, error1, 3, error2 ])
-        (function(result, errors) {
+      var cont = continuables.create();
+      continuables.group([ 1, error1, 3, cont ])
+        (function(result, successful) {
+          test.assert.ok(!successful);
           test.assert.equal(1, result[0]);
           test.assert.equal(error1, result[1]);
           test.assert.equal(3, result[2]);
           test.assert.equal(error2, result[3]);
           test.finish();
-          return;
+          return true;
          });
+
+     cont.fulfill(error2);
     },
   });
