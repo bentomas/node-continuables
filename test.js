@@ -37,7 +37,7 @@ var sync_function = function(val) {
     "test simple": function(test) {
       test.numAssertionsExpected = 1;
       async_function(42)
-        (function(val) {
+        (function(success, val) {
           test.assert.equal(42, val);
           test.finish();
         });
@@ -45,11 +45,11 @@ var sync_function = function(val) {
     "test chain": function(test) {
       test.numAssertionsExpected = 2;
       async_function(true)
-        (function(val) {
+        (function(success, val) {
           test.assert.ok(val);
           return 42;
          })
-        (function(val) {
+        (function(success, val) {
           test.assert.equal(42, val);
           test.finish();
          });
@@ -57,12 +57,12 @@ var sync_function = function(val) {
     "test callback can return continuables": function(test) {
       test.numAssertionsExpected = 1;
       async_function(true)
-        (function(val) {
-          return async_function(43)(function(val) {
+        (function(success, val) {
+          return async_function(43)(function(success, val) {
               return async_function(val-1);
             });
          })
-        (function(val) {
+        (function(success, val) {
           test.assert.equal(42, val);
           test.finish();
          });
@@ -70,14 +70,14 @@ var sync_function = function(val) {
     "test callback can return Promises": function(test) {
       test.numAssertionsExpected = 4;
       async_function(true)
-        (function(val) {
+        (function(success, val) {
           var p = new events.Promise();
           process.nextTick(function() {
               p.emitSuccess(42);
             });
           return p;
          })
-        (function(val) {
+        (function(success, val) {
           test.assert.equal(42, val);
 
           var p = new events.Promise();
@@ -86,7 +86,7 @@ var sync_function = function(val) {
             });
           return p;
          })
-        (function(val, success) {
+        (function(success, val) {
           test.assert.ok(val instanceof Error);
           test.assert.ok(!success);
 
@@ -99,22 +99,22 @@ var sync_function = function(val) {
             });
           return p1;
          })
-        (function(val) {
+        (function(success, val) {
           test.assert.equal(42, val);
           test.finish();
          });
     },
-    "test successful parameter": function(test) {
+    "test success parameter": function(test) {
       test.numAssertionsExpected = 3;
       var err = new Error();
       async_function(err)
-        (function(val, successful) {
+        (function(success, val) {
           test.assert.equal(val, err);
-          test.assert.ok(!successful);
+          test.assert.ok(!success);
           return true;
          })
-        (function(val, successful) {
-          test.assert.ok(successful);
+        (function(success, val) {
+          test.assert.ok(success);
           test.finish();
          })
     },
@@ -138,7 +138,7 @@ var sync_function = function(val) {
       test.numAssertionsExpected = 2;
 
       test.assert.throws(function() {
-          sync_function().emitError('error', false);
+          sync_function().emitError('error');
         });
 
       // gets chained along
@@ -147,7 +147,7 @@ var sync_function = function(val) {
           (function() {
             // do nothing with the error
           });
-          continuable.emitError('error', false);
+          continuable.emitError('error');
         });
     },
     "test can't fulfill twice": function(test) {
@@ -234,7 +234,7 @@ var sync_function = function(val) {
           'two': async_function(2),
           'three': async_function(3),
         })
-        (function(result) {
+        (function(success, result) {
           test.assert.deepEqual({one: 1, two: 2, three: 3}, result);
           test.finish();
          });
@@ -246,7 +246,7 @@ var sync_function = function(val) {
           async_function(2),
           async_function(3),
         ])
-        (function(result) {
+        (function(success, result) {
           test.assert.deepEqual([1,2,3], result);
           test.finish();
          });
@@ -260,7 +260,7 @@ var sync_function = function(val) {
           two,
           three
         ])
-        (function(result) {
+        (function(success, result) {
           test.assert.deepEqual([1,two,3], result);
           test.finish();
          });
@@ -278,7 +278,7 @@ var sync_function = function(val) {
           async_function(false)(function(val) { return p2; }),
           p3
         ])
-        (function(result) {
+        (function(success, result) {
           test.assert.deepEqual([true, true, true], result);
           test.finish();
          });
@@ -291,7 +291,7 @@ var sync_function = function(val) {
     "test fires if all synchronous": function(test) {
       test.numAssertionsExpected = 1;
       continuables.group([ 1, 2, 3 ])
-        (function(result) {
+        (function(success, result) {
           test.assert.deepEqual([1,2,3], result);
           test.finish();
          });
@@ -302,8 +302,8 @@ var sync_function = function(val) {
       var error2 = new Error();
       var cont = continuables.create();
       continuables.group([ 1, error1, 3, cont ])
-        (function(result, successful) {
-          test.assert.ok(!successful);
+        (function(success, result) {
+          test.assert.ok(!success);
           test.assert.equal(1, result[0]);
           test.assert.equal(error1, result[1]);
           test.assert.equal(3, result[2]);

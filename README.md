@@ -36,30 +36,30 @@ Examples:
 
     // simple
     async_function(true)
-      (function(val) {
+      (function(successful, val) {
         // val == true
       });
 
-    // if there was an error, the second parameter will tell you
+    // if there was an error, the first parameter will tell you
     async_function({hello: 'world'})
-      (function(val, successful) {
-        // val == {hello: 'world'}
+      (function(successful, val) {
         // successful == true
+        // val == {hello: 'world'}
       });
 
     async_function(new Error())
-      (function(val, successful) {
-        // val == new Error()
+      (function(successful, val) {
         // successful == false
+        // val == new Error()
       });
 
     // this last example will throw because the code didn't 'handle' the error
-    // here is an example that doesn't
+    // here is an example that doesn't...
 
     async_function(new Error())
-      (function(val, successful) {
-        // val == new Error()
+      (function(successful, val) {
         // successful == false
+        // val == new Error()
 
         // return something that isn't an error, indicating it has been handled
         return true;
@@ -68,11 +68,11 @@ Examples:
 continuables can be chained:
 
     async_function(true)
-      (function(val) {
+      (function(successful, val) {
         // val == true
         return false
       })
-      (function(val) {
+      (function(successful, val) {
         // val == false
       })
 
@@ -84,7 +84,7 @@ The module also comes with a group function, for doing many asynchronous calls a
         two: async_function(2),
         three: async_function(3)
       })
-      (function(result) {
+      (function(successful, result) {
         // result == {one: 1, two: 2, three: 3}
       });
 
@@ -94,7 +94,7 @@ The module also comes with a group function, for doing many asynchronous calls a
         async_function(2),
         async_function(3)
       ])
-      (function(result) {
+      (function(successful, result) {
         // result == [1,2,3]
       });
 

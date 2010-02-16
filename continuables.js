@@ -1,21 +1,6 @@
 var sys = require('sys');
 var events = require('events');
 
-exports.isContinuable = function(obj) {
-  return !!(typeof obj === 'function' && obj.isContinuable && obj.emitSuccess && obj.emitError);
-};
-
-exports.either = function(success, error) {
-  return function(val, successful) {
-    if( successful ) {
-      return success(val);
-    }
-    else {
-      return error(val);
-    }
-  }
-}
-
 exports.create = function() {
   var queue = [],
       queueIndex = 0,
@@ -41,7 +26,7 @@ exports.create = function() {
       }
 
       if( queueIndex < queue.length ) {
-        var returned = queue[queueIndex++](val, success);
+        var returned = queue[queueIndex++](success, val);
         if( typeof returned === 'undefined' || returned === null ) {
           handleVal(val, success);
         }
@@ -82,6 +67,21 @@ exports.create = function() {
   return continuable;
 };
 
+exports.isContinuable = function(obj) {
+  return !!(typeof obj === 'function' && obj.isContinuable && obj.emitSuccess && obj.emitError);
+};
+
+exports.either = function(success, error) {
+  return function(successful, val) {
+    if( successful ) {
+      return success(val);
+    }
+    else {
+      return error(val);
+    }
+  }
+}
+
 var groupCheckDone = function(state) {
   if( state.doneAdding && state.numPieces === state.numDone ) {
     if(state.error) {
@@ -95,13 +95,13 @@ var groupCheckDone = function(state) {
 var groupAdd = function(state, piece, key) {
   state.numPieces++;
 
-  var handlePieceResult = function(result, successful) {
+  var handlePieceResult = function(successful, result) {
     if( exports.isContinuable(result) ) {
       result(handlePieceResult);
     }
     else if( result instanceof events.Promise ) {
-      result.addCallback(handlePieceResult);
-      result.addErrback(function(error) { handlePieceResult(error, false); });
+      result.addCallback(function(result) { handlePieceResult(true, result); });
+      result.addErrback(function(error) { handlePieceResult(false, error); });
     }
     else {
       if(typeof successful === 'undefined') {
@@ -123,7 +123,7 @@ var groupAdd = function(state, piece, key) {
     }
   };
 
-  handlePieceResult(piece);
+  handlePieceResult( piece instanceof Error ? false : true, piece);
 };
 
 exports.group = function(obj) {
