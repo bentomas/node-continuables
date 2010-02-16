@@ -1,118 +1,82 @@
-var sys = require('sys');
-var events = require('events');
+var sys = require('sys'),
+    events = require('events');
 
 exports.create = function() {
   var queue = [],
       queueIndex = 0,
-      fulfilled = false;
+      cachedValue;
 
-  function handleVal(val, success) {
+  function handleVal(val) {
+    if( continuable.fulfill == arguments.callee ) {
+      continuable.fulfill = function() {
+        throw new Error('this continuable has already been fulfilled');
+      }
+    }
+
     if( exports.isContinuable(val) ) {
       // need to queue up our function in the continuable
       val(handleVal);
     }
     else if( val instanceof events.Promise ) {
       val.addCallback(handleVal);
-      val.addErrback(function(error) { handleVal(error, false); });
+      val.addErrback(handleVal);
     }
-    else {
-      if( typeof success === 'undefined' || success === null ) {
-          if( val instanceof Error ) {
-            success = false;
-          }
-          else {
-            success = true;
-          }
-      }
-
-      if( queueIndex < queue.length ) {
-        var returned = queue[queueIndex++](success, val);
-        if( typeof returned === 'undefined' || returned === null ) {
-          handleVal(val, success);
-        }
-        else {
-          handleVal(returned);
-        }
-      }
-      else if(!success) {
+    else if( queueIndex < queue.length ) {
+      var returned = queue[queueIndex++](val);
+      handleVal(typeof returned === 'undefined' ? val : returned);
+    }
+    else if(val instanceof Error) {
         throw val;
       }
-    }
   };
 
   function continuable(callback) {
-    queue.push(callback);
+    if( typeof cachedValue === 'undefined' ) {
+      queue.push(callback);
+    }
+    else {
+      handleVal(cachedValue);
+    }
     return continuable;
   };
   continuable.isContinuable = true;
-  continuable.emitSuccess = function(val) {
-    if( !fulfilled ) {
-      fulfilled = true;
-      handleVal(val, true);
-    }
-    else {
-      throw new Error('this continuable has already been fulfilled');
-    }
-  };
-  continuable.emitError = function(val) {
-    if( !fulfilled ) {
-      fulfilled = true;
-      handleVal(val, false);
-    }
-    else {
-      throw new Error('this continuable has already been fulfilled');
-    }
-  };
+  continuable.fulfill = handleVal;
 
   return continuable;
 };
 
 exports.isContinuable = function(obj) {
-  return !!(typeof obj === 'function' && obj.isContinuable && obj.emitSuccess && obj.emitError);
+  return !!(typeof obj === 'function' && obj.isContinuable && obj.fulfill);
 };
 
 exports.either = function(success, error) {
-  return function(successful, val) {
-    if( successful ) {
-      return success(val);
+  return function(val) {
+    if( val instanceof Error ) {
+      return error(val);
     }
     else {
-      return error(val);
+      return success(val);
     }
   }
 }
 
 var groupCheckDone = function(state) {
   if( state.doneAdding && state.numPieces === state.numDone ) {
-    if(state.error) {
-      state.continuable.emitError(state.results);
-    }
-    else {
-      state.continuable.emitSuccess(state.results);
-    }
+    state.continuable.fulfill(state.results);
   };
 };
 var groupAdd = function(state, piece, key) {
   state.numPieces++;
 
-  var handlePieceResult = function(successful, result) {
+  var handlePieceResult = function(result) {
     if( exports.isContinuable(result) ) {
       result(handlePieceResult);
     }
     else if( result instanceof events.Promise ) {
-      result.addCallback(function(result) { handlePieceResult(true, result); });
-      result.addErrback(function(error) { handlePieceResult(false, error); });
+      result.addCallback(handlePieceResult);
+      result.addErrback(handlePieceResult);
     }
     else {
-      if(typeof successful === 'undefined') {
-        if( result instanceof Error ) {
-          state.error = true;
-        }
-      }
-      else if(successful === false) {
-        state.error = true;
-      }
-
       state.results[key] = result;
       state.numDone++;
       groupCheckDone(state);
@@ -123,7 +87,7 @@ var groupAdd = function(state, piece, key) {
     }
   };
 
-  handlePieceResult( piece instanceof Error ? false : true, piece);
+  handlePieceResult(piece);
 };
 
 exports.group = function(obj) {
@@ -132,7 +96,6 @@ exports.group = function(obj) {
     numDone: 0,
     continuable: exports.create(),
     doneAdding: false,
-    error: false
   };
 
   if( obj instanceof Array ) {
