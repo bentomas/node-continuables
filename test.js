@@ -8,7 +8,12 @@ var async_function = function(val) {
   var cont = continuables.create();
 
   process.nextTick(function() {
-      cont.fulfill(val);
+      if( val instanceof Error ) {
+        cont.emitError(val);
+      }
+      else {
+        cont.emitSuccess(val);
+      }
     });
 
   return cont;
@@ -16,7 +21,12 @@ var async_function = function(val) {
 var sync_function = function(val) {
   var cont = continuables.create();
   if( typeof val !== 'undefined' ) {
-    cont.fulfill(val);
+    if( val instanceof Error ) {
+      cont.emitError(val);
+    }
+    else {
+      cont.emitSuccess(val);
+    }
   }
   return cont;
 };
@@ -121,14 +131,14 @@ var sync_function = function(val) {
         });
 
       test.assert.throws(function() {
-          continuable.fulfill();
+          continuable.emitSuccess();
         });
     },
     "test throws if error is not handled (and isn't instanceof Error)": function(test) {
       test.numAssertionsExpected = 2;
 
       test.assert.throws(function() {
-          sync_function().fulfill('error', false);
+          sync_function().emitError('error', false);
         });
 
       // gets chained along
@@ -137,29 +147,29 @@ var sync_function = function(val) {
           (function() {
             // do nothing with the error
           });
-          continuable.fulfill('error', false);
+          continuable.emitError('error', false);
         });
     },
     "test can't fulfill twice": function(test) {
       test.numAssertionsExpected = 1;
       test.assert.throws(function() {
-          sync_function(true).fulfill(false);
+          sync_function(true).emitSuccess(false);
         });
     },
     "test different success errback callback": function(test) {
       test.numAssertionsExpected = 2;
       async_function(0)
-        (function success(val) {
+        (continuables.either(function success(val) {
           test.assert.equal(0, val);
          },
          function error(val) {
           // should not be called
           test.assert.ok(false);
-         })
+         }));
 
       var err = new Error();
       async_function(err)
-        (function success(val) {
+        (continuables.either(function success(val) {
           // should not be called
           test.assert.ok(false);
          },
@@ -167,51 +177,51 @@ var sync_function = function(val) {
           test.assert.equal(err, val);
           // return something so the error isn't thrown
           return true;
-         })
+         }));
     },
     "test different success errback callbacks with chain": function(test) {
       test.numAssertionsExpected = 5;
       async_function(0)
-        (function success(val) {
+        (continuables.either(function success(val) {
           test.assert.equal(0, val);
           return 1;
          },
          function error(val) {
           // should not be called
           test.assert.ok(false);
-         })
-        (function success(val) {
+         }))
+        (continuables.either(function success(val) {
           test.assert.equal(1, val);
          },
          function error(val) {
           // should not be called
           test.assert.ok(false);
-         })
+         }));
 
       var err = new Error();
       async_function(err)
-        (function success(val) {
+        (continuables.either(function success(val) {
           // should not be called
           test.assert.ok(false);
          },
          function error(val) {
           test.assert.equal(err, val);
-         })
-        (function success(val) {
+         }))
+        (continuables.either(function success(val) {
           // should not be called
           test.assert.ok(false);
          },
          function error(val) {
           test.assert.equal(err, val);
           return 1;
-         })
-        (function success(val) {
+         }))
+        (continuables.either(function success(val) {
           test.assert.equal(1, val);
          },
          function error(val) {
           // should not be called
           test.assert.ok(false);
-         });
+         }));
     },
   });
 
@@ -302,6 +312,6 @@ var sync_function = function(val) {
           return true;
          });
 
-     cont.fulfill(error2);
+     cont.emitError(error2);
     },
   });

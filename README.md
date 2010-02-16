@@ -22,7 +22,12 @@ Examples:
 
       process.nextTick(function() {
           // fulfill it
-          continuable.fulfill(val);
+          if(val instanceof Error) {
+            continuable.emitError(val);
+          }
+          else {
+            continuable.emitSuccess(val);
+          }
         });
 
       // return the continuable for people to use

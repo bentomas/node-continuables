@@ -2,15 +2,26 @@ var sys = require('sys');
 var events = require('events');
 
 exports.isContinuable = function(obj) {
-  return !!(typeof obj === 'function' && obj.isContinuable && obj.fulfill);
+  return !!(typeof obj === 'function' && obj.isContinuable && obj.emitSuccess && obj.emitError);
 };
+
+exports.either = function(success, error) {
+  return function(val, successful) {
+    if( successful ) {
+      return success(val);
+    }
+    else {
+      return error(val);
+    }
+  }
+}
 
 exports.create = function() {
   var queue = [],
       queueIndex = 0,
       fulfilled = false;
 
-  var handleVal = function handleVal(val, success) {
+  function handleVal(val, success) {
     if( exports.isContinuable(val) ) {
       // need to queue up our function in the continuable
       val(handleVal);
@@ -30,12 +41,7 @@ exports.create = function() {
       }
 
       if( queueIndex < queue.length ) {
-        var func = queue[queueIndex+(success ? 0 : 1)];
-        queueIndex += 2;
-        if( !func ) {
-          return handleVal(val, success);
-        }
-        var returned = func(val, success);
+        var returned = queue[queueIndex++](val, success);
         if( typeof returned === 'undefined' || returned === null ) {
           handleVal(val, success);
         }
@@ -49,19 +55,24 @@ exports.create = function() {
     }
   };
 
-  var continuable = function continuable(success, failure) {
-    if( typeof failure === 'undefined' ) {
-      failure = success;
-    }
-    queue.push(success);
-    queue.push(failure);
+  function continuable(callback) {
+    queue.push(callback);
     return continuable;
   };
   continuable.isContinuable = true;
-  continuable.fulfill = function(val, success) {
+  continuable.emitSuccess = function(val) {
     if( !fulfilled ) {
       fulfilled = true;
-      handleVal(val, success);
+      handleVal(val, true);
+    }
+    else {
+      throw new Error('this continuable has already been fulfilled');
+    }
+  };
+  continuable.emitError = function(val) {
+    if( !fulfilled ) {
+      fulfilled = true;
+      handleVal(val, false);
     }
     else {
       throw new Error('this continuable has already been fulfilled');
@@ -73,7 +84,12 @@ exports.create = function() {
 
 var groupCheckDone = function(state) {
   if( state.doneAdding && state.numPieces === state.numDone ) {
-    state.continuable.fulfill(state.results, !state.error);
+    if(state.error) {
+      state.continuable.emitError(state.results);
+    }
+    else {
+      state.continuable.emitSuccess(state.results);
+    }
   };
 };
 var groupAdd = function(state, piece, key) {
