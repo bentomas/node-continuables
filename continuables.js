@@ -4,7 +4,6 @@ var sys = require('sys'),
 exports.create = function() {
   var queue = [],
       queueIndex = 0,
-      cachedValue;
 
   function handleVal(val) {
     if( continuable.fulfill == arguments.callee ) {
@@ -31,12 +30,7 @@ exports.create = function() {
   };
 
   function continuable(callback) {
-    if( typeof cachedValue === 'undefined' ) {
-      queue.push(callback);
-    }
-    else {
-      handleVal(cachedValue);
-    }
+    queue.push(callback);
     return continuable;
   };
   continuable.isContinuable = true;
