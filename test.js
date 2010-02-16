@@ -1,3 +1,7 @@
+// To run these tests you need the node-async-testing library which can be 
+// found here: http://github.com/bentomas/node-async-testing
+
+
 var sys = require('sys'),
     events = require('events'),
     TestSuite = require('async_testing').TestSuite;
@@ -22,30 +26,30 @@ var sync_function = function(val) {
 };
 
 
-(new TestSuite('Continuables suite'))
-  .runTests({
-    "test simple": function(test) {
-      test.numAssertionsExpected = 1;
+exports['Continuables suite'] = (new TestSuite())
+  .addTests({
+    "test simple": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       async_function(42)
         (function(val) {
-          test.assert.equal(42, val);
-          test.finish();
+          assert.equal(42, val);
+          finished();
         });
     },
-    "test chain": function(test) {
-      test.numAssertionsExpected = 2;
+    "test chain": function(assert, finished) {
+      this.numAssertionsExpected = 2;
       async_function(true)
         (function(val) {
-          test.assert.ok(val);
+          assert.ok(val);
           return 42;
          })
         (function(val) {
-          test.assert.equal(42, val);
-          test.finish();
+          assert.equal(42, val);
+          finished();
          });
     },
-    "test callback can return continuables": function(test) {
-      test.numAssertionsExpected = 1;
+    "test callback can return continuables": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       async_function(true)
         (function(val) {
           return async_function(43)(function(val) {
@@ -53,12 +57,12 @@ var sync_function = function(val) {
             });
          })
         (function(val) {
-          test.assert.equal(42, val);
-          test.finish();
+          assert.equal(42, val);
+          finished();
          });
     },
-    "test callback can return Promises": function(test) {
-      test.numAssertionsExpected = 3;
+    "test callback can return Promises": function(assert, finished) {
+      this.numAssertionsExpected = 3;
       async_function(true)
         (function(val) {
           var p = new events.Promise();
@@ -68,7 +72,7 @@ var sync_function = function(val) {
           return p;
          })
         (function(val) {
-          test.assert.equal(42, val);
+          assert.equal(42, val);
 
           var p = new events.Promise();
           process.nextTick(function() {
@@ -77,7 +81,7 @@ var sync_function = function(val) {
           return p;
          })
         (function(val) {
-          test.assert.ok(val instanceof Error);
+          assert.ok(val instanceof Error);
 
           var p1 = new events.Promise();
           var p2 = new events.Promise();
@@ -89,129 +93,146 @@ var sync_function = function(val) {
           return p1;
          })
         (function(val) {
-          test.assert.equal(42, val);
-          test.finish();
+          assert.equal(42, val);
+          finished();
          });
     },
-    "test error is thrown if not handled": function(test) {
-      test.numAssertionsExpected = 2;
+    "test error is thrown if not handled": function(assert, finished, test) {
+      this.numAssertionsExpected = 2;
+ 
+      var err1 = new Error();
+      async_function(err1);
 
-      test.assert.throws(function() {
-          sync_function(new Error());
-        });
-
-      var continuable = sync_function()
+      var err2 = new Error();
+      async_function()
         (function() {
-          return new Error();
+          return err2;
         });
 
-      test.assert.throws(function() {
-          continuable.fulfill();
+      var countDone = 0;
+      test.addListener('uncaughtException', function(err) {
+          if( err == err1 || err == err2 ) {
+            countDone++;
+            assert.ok(true);
+            if(countDone == 2) {
+              finished();
+            }
+          }
+          else {
+            throw(err);
+          }
         });
+
     },
-    "test can't fulfill twice": function(test) {
-      test.numAssertionsExpected = 1;
-      test.assert.throws(function() {
+    "test can't fulfill twice": function(assert) {
+      this.numAssertionsExpected = 1;
+      assert.throws(function() {
           sync_function(true).fulfill(false);
         });
     },
-    "test different success errback callback with either": function(test) {
-      test.numAssertionsExpected = 2;
+    "test different success errback callback with either": function(assert, finished) {
+      this.numAssertionsExpected = 2;
       async_function(0)
         (continuables.either(function success(val) {
-          test.assert.equal(0, val);
+          assert.equal(0, val);
          },
          function error(val) {
           // should not be called
-          test.assert.ok(false);
+          assert.ok(false);
          }));
 
       var err = new Error();
       async_function(err)
         (continuables.either(function success(val) {
           // should not be called
-          test.assert.ok(false);
+          assert.ok(false);
          },
          function error(val) {
-          test.assert.equal(err, val);
+          assert.equal(err, val);
           // return something so the error isn't thrown
           return true;
-         }));
+         }))
+        (function() {
+          finished();
+         });
     },
-    "test chaining different success errback callbacks with either": function(test) {
-      test.numAssertionsExpected = 5;
+    "test chaining different success errback callbacks with either": function(assert, finished) {
+      this.numAssertionsExpected = 5;
       async_function(0)
         (continuables.either(function success(val) {
-          test.assert.equal(0, val);
+          assert.equal(0, val);
           return 1;
          },
          function error(val) {
           // should not be called
-          test.assert.ok(false);
+          assert.ok(false);
          }))
         (continuables.either(function success(val) {
-          test.assert.equal(1, val);
+          assert.equal(1, val);
          },
          function error(val) {
           // should not be called
-          test.assert.ok(false);
+          assert.ok(false);
          }));
 
       var err = new Error();
       async_function(err)
         (continuables.either(function success(val) {
           // should not be called
-          test.assert.ok(false);
+          assert.ok(false);
          },
          function error(val) {
-          test.assert.equal(err, val);
+          assert.equal(err, val);
          }))
         (continuables.either(function success(val) {
           // should not be called
-          test.assert.ok(false);
+          assert.ok(false);
          },
          function error(val) {
-          test.assert.equal(err, val);
+          assert.equal(err, val);
           return 1;
          }))
         (continuables.either(function success(val) {
-          test.assert.equal(1, val);
+          assert.equal(1, val);
          },
          function error(val) {
           // should not be called
-          test.assert.ok(false);
-         }));
+          assert.ok(false);
+         }))
+        (function() {
+          finished();
+         });
     },
   });
 
-(new TestSuite('Groups suite'))
-  .runTests({
-    "test object": function(test) {
-      test.numAssertionsExpected = 1;
+exports['Groups suite'] = (new TestSuite())
+  .addTests({
+    "test object": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       continuables.group({
           'one': async_function(1),
           'two': async_function(2),
           'three': async_function(3),
         })
         (function(result) {
-          test.assert.deepEqual({one: 1, two: 2, three: 3}, result);
-          test.finish();
+          assert.deepEqual({one: 1, two: 2, three: 3}, result);
+          finished();
          });
     },
-    "test array": function(test) {
-      test.numAssertionsExpected = 1;
+    "test array": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       continuables.group([
           async_function(1),
           async_function(2),
           async_function(3),
         ])
         (function(result) {
-          test.assert.deepEqual([1,2,3], result);
-          test.finish();
+          assert.deepEqual([1,2,3], result);
+          finished();
          });
     },
-    "test can take other objects": function(test) {
-      test.numAssertionsExpected = 1;
+    "test can take other objects": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       var two = function() { return 2; };
       var three = new events.Promise();
       continuables.group([
@@ -220,14 +241,14 @@ var sync_function = function(val) {
           three
         ])
         (function(result) {
-          test.assert.deepEqual([1,two,3], result);
-          test.finish();
+          assert.deepEqual([1,two,3], result);
+          finished();
          });
 
       three.emitSuccess(3);
     },
-    "test group waits for all promise/continuable chains to finish": function(test) {
-      test.numAssertionsExpected = 1;
+    "test group waits for all promise/continuable chains to finish": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       var p1 = new events.Promise();
       var p2 = new events.Promise();
       var p3 = new events.Promise();
@@ -238,8 +259,8 @@ var sync_function = function(val) {
           p3
         ])
         (function(result) {
-          test.assert.deepEqual([true, true, true], result);
-          test.finish();
+          assert.deepEqual([true, true, true], result);
+          finished();
          });
 
       p1.emitSuccess(new async_function(true));
@@ -247,29 +268,33 @@ var sync_function = function(val) {
       p3.emitSuccess(p4);
       p4.emitSuccess(true);
     },
-    "test fires if all synchronous": function(test) {
-      test.numAssertionsExpected = 1;
+    "test fires if all synchronous": function(assert, finished) {
+      this.numAssertionsExpected = 1;
       continuables.group([ 1, 2, 3 ])
         (function(result) {
-          test.assert.deepEqual([1,2,3], result);
-          test.finish();
+          assert.deepEqual([1,2,3], result);
+          finished();
          });
     },
-    "test group with errors": function(test) {
-      test.numAssertionsExpected = 4;
+    "test group with errors": function(assert, finished) {
+      this.numAssertionsExpected = 4;
       var error1 = new Error();
       var error2 = new Error();
       var cont = continuables.create();
       continuables.group([ 1, error1, 3, cont ])
         (function(result) {
-          test.assert.equal(1, result[0]);
-          test.assert.equal(error1, result[1]);
-          test.assert.equal(3, result[2]);
-          test.assert.equal(error2, result[3]);
-          test.finish();
+          assert.equal(1, result[0]);
+          assert.equal(error1, result[1]);
+          assert.equal(3, result[2]);
+          assert.equal(error2, result[3]);
+          finished();
           return true;
          });
 
      cont.fulfill(error2);
     },
   });
+
+if (module === require.main) {
+  require('async_testing').runSuites(exports);
+}
