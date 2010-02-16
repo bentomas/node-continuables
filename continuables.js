@@ -3,7 +3,7 @@ var sys = require('sys'),
 
 exports.create = function() {
   var queue = [],
-      queueIndex = 0,
+      queueIndex = 0;
 
   function handleVal(val) {
     if( continuable.fulfill == arguments.callee ) {
