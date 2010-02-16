@@ -35,7 +35,6 @@ Examples:
         // val == true
       });
 
-    // if there was an error, the first parameter will tell you
     async_function({hello: 'world'})
       (function(val) {
         // val == {hello: 'world'}
@@ -44,17 +43,6 @@ Examples:
     async_function(new Error())
       (function(val) {
         // val == new Error()
-      });
-
-    // this last example will throw because the code didn't 'handle' the error
-    // here is an example that doesn't...
-
-    async_function(new Error())
-      (function(val) {
-        // val == new Error()
-
-        // return something that isn't an error, indicating it has been 'handled'
-        return true;
       });
 
 continuables can be chained:
@@ -67,6 +55,51 @@ continuables can be chained:
       (function(val) {
         // val == false
       })
+
+If you don't return anything, the previous value will be used
+
+    async_function(true)
+      (function(val) {
+        // val == true
+      })
+      (function(val) {
+        // val == true
+      })
+
+If the chain ends with an error, then it will be thrown. To prevent that, make
+sure to return something that isn't an error.
+
+    async_function(new Error())
+      (function(val) {
+        // val == new Error()
+
+        // return something that isn't an error, indicating it has been 'handled'
+        return true;
+      });
+
+If you like having separate callbacks for errors and success states use the
+either function.
+
+    async_function(new Error())
+      (continuables.either(
+        function success(val) {
+          // won't be called
+        },
+        funciton error(val) {
+          // val == new Error()
+
+          // return something that isn't an error, indicating it has been 'handled'
+          return true;
+        }));
+
+    async_function(true)
+      (continuables.either(
+        function success(val) {
+          // val == true
+        },
+        funciton error(val) {
+          // won't be called
+        }));
 
 The module also comes with a group function, for doing many asynchronous calls at once:
   
