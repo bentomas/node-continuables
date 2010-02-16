@@ -22,12 +22,7 @@ Examples:
 
       process.nextTick(function() {
           // fulfill it
-          if(val instanceof Error) {
-            continuable.emitError(val);
-          }
-          else {
-            continuable.emitSuccess(val);
-          }
+          continuable.fulfill(val);
         });
 
       // return the continuable for people to use
@@ -36,20 +31,18 @@ Examples:
 
     // simple
     async_function(true)
-      (function(successful, val) {
+      (function(val) {
         // val == true
       });
 
     // if there was an error, the first parameter will tell you
     async_function({hello: 'world'})
-      (function(successful, val) {
-        // successful == true
+      (function(val) {
         // val == {hello: 'world'}
       });
 
     async_function(new Error())
-      (function(successful, val) {
-        // successful == false
+      (function(val) {
         // val == new Error()
       });
 
@@ -57,22 +50,21 @@ Examples:
     // here is an example that doesn't...
 
     async_function(new Error())
-      (function(successful, val) {
-        // successful == false
+      (function(val) {
         // val == new Error()
 
-        // return something that isn't an error, indicating it has been handled
+        // return something that isn't an error, indicating it has been 'handled'
         return true;
       });
 
 continuables can be chained:
 
     async_function(true)
-      (function(successful, val) {
+      (function(val) {
         // val == true
         return false
       })
-      (function(successful, val) {
+      (function(val) {
         // val == false
       })
 
@@ -84,7 +76,7 @@ The module also comes with a group function, for doing many asynchronous calls a
         two: async_function(2),
         three: async_function(3)
       })
-      (function(successful, result) {
+      (function(result) {
         // result == {one: 1, two: 2, three: 3}
       });
 
@@ -94,7 +86,7 @@ The module also comes with a group function, for doing many asynchronous calls a
         async_function(2),
         async_function(3)
       ])
-      (function(successful, result) {
+      (function(result) {
         // result == [1,2,3]
       });
 
