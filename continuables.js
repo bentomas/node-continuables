@@ -130,7 +130,7 @@ var groupAdd = function(state, piece, key) {
 
       // in case a continuable returned an error we have to tell it not
       // to throw it
-      return true;
+      return [true];
     }
   };
 

@@ -226,7 +226,6 @@ var sync_function = function(val) {
     },
   });
 
-/*
 (new TestSuite('Groups suite'))
   .runTests({
     "test object": function(test) {
@@ -311,10 +310,9 @@ var sync_function = function(val) {
           test.assert.equal(3, result[2]);
           test.assert.equal(error2, result[3]);
           test.finish();
-          return true;
+          return [true];
          });
 
      cont.emitError(error2);
     },
   });
-*/
