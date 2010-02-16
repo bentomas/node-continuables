@@ -3,7 +3,8 @@ var sys = require('sys'),
 
 exports.create = function() {
   var queue = [],
-      queueIndex = 0;
+      queueIndex = 0,
+      cachedValue;
 
   function handleVal(val) {
     if( continuable.fulfill == arguments.callee ) {
@@ -24,13 +25,27 @@ exports.create = function() {
       var returned = queue[queueIndex++](val);
       handleVal(typeof returned === 'undefined' ? val : returned);
     }
-    else if(val instanceof Error) {
-        throw val;
-      }
+    else {
+      cachedValue = val;
+
+      if(val instanceof Error) {
+        // we throw in the next tick to give people a chance to add a callback
+        var length = queue.length;
+        process.nextTick(function() {
+            // if these are equal, no new callbacks have been added
+            if( length == queue.length ) {
+              throw val;
+            }
+          });
+        }
+    }
   };
 
   function continuable(callback) {
     queue.push(callback);
+    if(typeof cachedValue !== 'undefined') {
+      handleVal(cachedValue);
+    }
     return continuable;
   };
   continuable.isContinuable = true;

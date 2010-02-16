@@ -32,6 +32,16 @@ var sync_function = function(val) {
           test.finish();
         });
     },
+    "test late callbacks": function(test) {
+      test.numAssertionsExpected = 1;
+      var c = async_function(42);
+      process.nextTick(function() {
+          c(function(val) {
+            test.assert.equal(42, val);
+            test.finish();
+          });
+        });
+    },
     "test chain": function(test) {
       test.numAssertionsExpected = 2;
       async_function(true)
@@ -95,18 +105,39 @@ var sync_function = function(val) {
     },
     "test error is thrown if not handled": function(test) {
       test.numAssertionsExpected = 2;
+ 
+      var err1 = new Error();
+      async_function(err1);
 
-      test.assert.throws(function() {
-          sync_function(new Error());
-        });
-
-      var continuable = sync_function()
+      var err2 = new Error();
+      async_function()
         (function() {
-          return new Error();
+          return err2;
         });
 
-      test.assert.throws(function() {
-          continuable.fulfill();
+      process.addListener('uncaughtException', function(err) {
+          if( err == err1 || err == err2 ) {
+            test.assert.ok(true);
+          }
+          else {
+            throw(err);
+          }
+        });
+
+    },
+    "test error is not thrown if not handled": function(test) {
+      test.numAssertionsExpected = 0;
+ 
+      async_function(new Error())(function() {
+          return true;
+        });
+
+      var c = async_function(new Error('hi'));
+
+      process.nextTick(function() {
+          c(function() {
+              return true;
+            });
         });
     },
     "test can't fulfill twice": function(test) {
