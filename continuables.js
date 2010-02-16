@@ -6,36 +6,47 @@ exports.create = function() {
       queueIndex = 0,
       fulfilled = false;
 
-  function handleVal(val, success) {
+  function handleVal(val) {
+    // this is a little bit of a hack.  basically if handleVal is called with 
+    // 2 arguments, it is as the callback to another continuable or promise
+    // we flip the order of the arguments, so we can run the returned object
+    // against our tests (for continuables and Promises)
+    if( arguments.length === 2 ) {
+      var success = val;
+      val = arguments[1];
+    }
+
     if( exports.isContinuable(val) ) {
       // need to queue up our function in the continuable
       val(handleVal);
     }
     else if( val instanceof events.Promise ) {
-      val.addCallback(handleVal);
-      val.addErrback(function(error) { handleVal(error, false); });
+      val.addCallback(function(result) { handleVal(true, result); });
+      val.addErrback(function(error) { handleVal(false, error); });
     }
     else {
-      if( typeof success === 'undefined' || success === null ) {
-          if( val instanceof Error ) {
-            success = false;
-          }
-          else {
-            success = true;
-          }
+      // handleVal was processed as the callback to a continuable or Promise.
+      // if it got here, then it wasn't an asynchronous response, so we convert
+      // the arguments to an array [successBoolean, value] that we pass to the 
+      // next callback in the chain
+      if( arguments.length === 2 ) {
+        val = [success, arguments[1]];
+      }
+      else if( val.constructor != Array ) {
+        throw "Callbacks to continuables must return an array";
       }
 
       if( queueIndex < queue.length ) {
-        var returned = queue[queueIndex++](success, val);
+        var returned = queue[queueIndex++].apply(null, val);
         if( typeof returned === 'undefined' || returned === null ) {
-          handleVal(val, success);
+          handleVal(val);
         }
         else {
           handleVal(returned);
         }
       }
-      else if(!success) {
-        throw val;
+      else if(!val[0]) {
+        throw val[1];
       }
     }
   };
@@ -48,7 +59,7 @@ exports.create = function() {
   continuable.emitSuccess = function(val) {
     if( !fulfilled ) {
       fulfilled = true;
-      handleVal(val, true);
+      handleVal([true, val]);
     }
     else {
       throw new Error('this continuable has already been fulfilled');
@@ -57,7 +68,7 @@ exports.create = function() {
   continuable.emitError = function(val) {
     if( !fulfilled ) {
       fulfilled = true;
-      handleVal(val, false);
+      handleVal([false, val]);
     }
     else {
       throw new Error('this continuable has already been fulfilled');

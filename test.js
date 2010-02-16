@@ -47,7 +47,7 @@ var sync_function = function(val) {
       async_function(true)
         (function(success, val) {
           test.assert.ok(val);
-          return 42;
+          return [true, 42];
          })
         (function(success, val) {
           test.assert.equal(42, val);
@@ -92,6 +92,7 @@ var sync_function = function(val) {
 
           var p1 = new events.Promise();
           var p2 = new events.Promise();
+          p2.hiya = 'world';
 
           process.nextTick(function() {
               p1.emitSuccess(p2);
@@ -111,7 +112,7 @@ var sync_function = function(val) {
         (function(success, val) {
           test.assert.equal(val, err);
           test.assert.ok(!success);
-          return true;
+          return [true,true];
          })
         (function(success, val) {
           test.assert.ok(success);
@@ -127,7 +128,7 @@ var sync_function = function(val) {
 
       var continuable = sync_function()
         (function() {
-          return new Error();
+          return [false, new Error()];
         });
 
       test.assert.throws(function() {
@@ -156,7 +157,7 @@ var sync_function = function(val) {
           sync_function(true).emitSuccess(false);
         });
     },
-    "test different success errback callback": function(test) {
+    "test different success errback callback using either": function(test) {
       test.numAssertionsExpected = 2;
       async_function(0)
         (continuables.either(function success(val) {
@@ -176,15 +177,15 @@ var sync_function = function(val) {
          function error(val) {
           test.assert.equal(err, val);
           // return something so the error isn't thrown
-          return true;
+          return [true];
          }));
     },
-    "test different success errback callbacks with chain": function(test) {
+    "test different success errback callbacks with chain using either": function(test) {
       test.numAssertionsExpected = 5;
       async_function(0)
         (continuables.either(function success(val) {
           test.assert.equal(0, val);
-          return 1;
+          return [true, 1];
          },
          function error(val) {
           // should not be called
@@ -213,7 +214,7 @@ var sync_function = function(val) {
          },
          function error(val) {
           test.assert.equal(err, val);
-          return 1;
+          return [true, 1];
          }))
         (continuables.either(function success(val) {
           test.assert.equal(1, val);
@@ -225,6 +226,7 @@ var sync_function = function(val) {
     },
   });
 
+/*
 (new TestSuite('Groups suite'))
   .runTests({
     "test object": function(test) {
@@ -315,3 +317,4 @@ var sync_function = function(val) {
      cont.emitError(error2);
     },
   });
+*/
