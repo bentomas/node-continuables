@@ -11,7 +11,7 @@ and managing continuables really easy.
 
 Examples:
 --------
-
+```javascript
     var continuables = require('continuables');
 
     // let's say you have an asynchronous function that outputs whatever it is given.
@@ -44,9 +44,9 @@ Examples:
       (function(val) {
         // val == new Error()
       });
-
+```
 continuables can be chained:
-
+```javascript
     async_function(true)
       (function(val) {
         // val == true
@@ -55,9 +55,9 @@ continuables can be chained:
       (function(val) {
         // val == false
       })
-
+```
 If you don't return anything, the previous value will be used
-
+```javascript
     async_function(true)
       (function(val) {
         // val == true
@@ -65,10 +65,10 @@ If you don't return anything, the previous value will be used
       (function(val) {
         // val == true
       })
-
+```
 If the chain ends with an error, then it will be thrown. To prevent that, make
 sure to return something that isn't an error.
-
+```javascript
     async_function(new Error())
       (function(val) {
         // val == new Error()
@@ -76,10 +76,10 @@ sure to return something that isn't an error.
         // return something that isn't an error, indicating it has been 'handled'
         return true;
       });
-
+```
 If you like having separate callbacks for errors and success states use the
 either function.
-
+```javascript
     async_function(new Error())
       (continuables.either(
         function success(val) {
@@ -100,9 +100,9 @@ either function.
         funciton error(val) {
           // won't be called
         }));
-
+```
 The module also comes with a group function, for doing many asynchronous calls at once:
-  
+```javascript
     // it can take an object
     continuables.group({
         one: async_function(1),
@@ -122,7 +122,7 @@ The module also comes with a group function, for doing many asynchronous calls a
       (function(result) {
         // result == [1,2,3]
       });
-
+```
 This also works great with Node's Promise objects.
 
 Installing
